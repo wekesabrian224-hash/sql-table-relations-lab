@@ -5,36 +5,37 @@ conn = sqlite3.connect('data.sqlite')
 
 # Part 1: Boston employees
 df_boston = pd.read_sql("""
-    SELECT e.firstName, e.lastName, e.jobTitle
+    SELECT e.firstName, e.jobTitle
     FROM employees AS e
     JOIN offices AS o
       ON e.officeCode = o.officeCode
     WHERE o.city = 'Boston'
+    ORDER BY e.firstName
 """, conn)
 print(df_boston)
 
 # Part 1: Offices with zero employees
-df_zero_employees = pd.read_sql("""
+df_zero_emp = pd.read_sql("""
     SELECT o.officeCode, o.city
     FROM offices AS o
     LEFT JOIN employees AS e
       ON o.officeCode = e.officeCode
     WHERE e.employeeNumber IS NULL
 """, conn)
-print(df_zero_employees)
+print(df_zero_emp)
 
 # Part 2: All employees with their office (if any)
-df_employees_offices = pd.read_sql("""
+df_employee = pd.read_sql("""
     SELECT e.firstName, e.lastName, o.city, o.state
     FROM employees AS e
     LEFT JOIN offices AS o
       ON e.officeCode = o.officeCode
     ORDER BY e.firstName, e.lastName
 """, conn)
-print(df_employees_offices)
+print(df_employee)
 
 # Part 2: Customers with no orders
-df_no_orders = pd.read_sql("""
+df_contacts = pd.read_sql("""
     SELECT c.contactFirstName, c.contactLastName, c.phone, c.salesRepEmployeeNumber
     FROM customers AS c
     LEFT JOIN orders AS o
@@ -42,20 +43,20 @@ df_no_orders = pd.read_sql("""
     WHERE o.orderNumber IS NULL
     ORDER BY c.contactLastName
 """, conn)
-print(df_no_orders)  # expect 24 rows
+print(df_contacts)
 
 # Part 3: Payments sorted by amount (cast to number)
-df_payments = pd.read_sql("""
+df_payment = pd.read_sql("""
     SELECT c.contactFirstName, c.contactLastName, p.amount, p.paymentDate
     FROM customers AS c
     JOIN payments AS p
       ON c.customerNumber = p.customerNumber
     ORDER BY CAST(p.amount AS REAL) DESC
 """, conn)
-print(df_payments)
+print(df_payment)
 
 # Part 4: Employees whose customers average over 90k credit limit
-df_high_credit = pd.read_sql("""
+df_credit = pd.read_sql("""
     SELECT e.employeeNumber, e.firstName, e.lastName,
            COUNT(c.customerNumber) AS n_customers
     FROM employees AS e
@@ -65,10 +66,10 @@ df_high_credit = pd.read_sql("""
     HAVING AVG(c.creditLimit) > 90000
     ORDER BY n_customers DESC
 """, conn)
-print(df_high_credit)  # expect 4 rows
+print(df_credit)
 
 # Part 4: Top-selling products
-df_top_products = pd.read_sql("""
+df_product_sold = pd.read_sql("""
     SELECT p.productName,
            COUNT(od.orderNumber) AS numorders,
            SUM(od.quantityOrdered) AS totalunits
@@ -78,10 +79,10 @@ df_top_products = pd.read_sql("""
     GROUP BY p.productCode, p.productName
     ORDER BY totalunits DESC
 """, conn)
-print(df_top_products)
+print(df_product_sold)
 
-# Part 5: Number of distinct purchasers per product
-df_purchasers = pd.read_sql("""
+# Part 5: Distinct purchasers per product
+df_total_customers = pd.read_sql("""
     SELECT p.productName, p.productCode,
            COUNT(DISTINCT o.customerNumber) AS numpurchasers
     FROM products AS p
@@ -92,10 +93,10 @@ df_purchasers = pd.read_sql("""
     GROUP BY p.productCode, p.productName
     ORDER BY numpurchasers DESC
 """, conn)
-print(df_purchasers)
+print(df_total_customers)
 
 # Part 5: Customers per office
-df_customers_per_office = pd.read_sql("""
+df_customers = pd.read_sql("""
     SELECT o.officeCode, o.city, COUNT(c.customerNumber) AS n_customers
     FROM offices AS o
     JOIN employees AS e
@@ -103,11 +104,12 @@ df_customers_per_office = pd.read_sql("""
     JOIN customers AS c
       ON e.employeeNumber = c.salesRepEmployeeNumber
     GROUP BY o.officeCode, o.city
+    ORDER BY o.officeCode
 """, conn)
-print(df_customers_per_office)
+print(df_customers)
 
-# Part 6: Employees who sold underperforming products (ordered by < 20 customers)
-df_underperforming = pd.read_sql("""
+# Part 6: Employees who sold products ordered by fewer than 20 customers
+df_under_20 = pd.read_sql("""
     SELECT DISTINCT e.employeeNumber, e.firstName, e.lastName, off.city, off.officeCode
     FROM employees AS e
     JOIN offices AS off
@@ -126,8 +128,9 @@ df_underperforming = pd.read_sql("""
         GROUP BY od2.productCode
         HAVING COUNT(DISTINCT o2.customerNumber) < 20
     )
+    ORDER BY e.lastName, e.firstName
 """, conn)
-print(df_underperforming)
+print(df_under_20)
 
 # Close the connection
 conn.close()
